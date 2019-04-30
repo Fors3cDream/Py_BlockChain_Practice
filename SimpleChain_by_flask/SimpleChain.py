@@ -15,7 +15,7 @@ class Blockchain(object):
         self.nodes = set() # 节点列表
 
         # Create the genesis block
-        self.new_block(previous_hash = '0x1', proof=100)
+        self.new_block(previous_hash = '0', proof=100)
 
     def register_node(self, address):
         """
@@ -39,10 +39,10 @@ class Blockchain(object):
         :return: True if valid, False if not
         """
         prev_block = chain[0]
-        current_index = 1
+        current_height = 1
 
-        while current_index < len(chain):
-            block = chain[current_index]
+        while current_height < len(chain):
+            block = chain[current_height]
             print(f'{prev_block}')
             print(f'{block}')
             # Check that the path of the block is correct
@@ -55,7 +55,7 @@ class Blockchain(object):
                 return False
 
             prev_block = block
-            current_index += 1
+            current_height += 1
         return True
 
     def resolve_conflicts(self):
@@ -98,9 +98,9 @@ class Blockchain(object):
         :return:  New Block
         """
         block = {
-            'index': len(self.chain) + 1,
+            'height': len(self.chain) + 1,
             'timestamp' : time(),
-            'tansactions': self.current_transactions,
+            'transactions': self.current_transactions,
             'proof': proof,
             'previous_hash': previous_hash or self.hash(self.chain[-1])
         }
@@ -129,7 +129,7 @@ class Blockchain(object):
             }
         )
 
-        return self.last_block['index'] + 1
+        return self.last_block['height'] + 1
 
 
     @property
@@ -189,7 +189,7 @@ node_identifier = str(uuid4()).replace("-", "")
 # Instantiate the Blockchain
 blockChain = Blockchain()
 
-@app.route('/mime', methods=['GET'])
+@app.route('/mine', methods=['GET'])
 def mine():
     # Run the proof of work algorithm tho get tne next proof
     last_block = blockChain.last_block
@@ -205,7 +205,7 @@ def mine():
 
     response = {
         'message': "New Block Forged",
-        "index": block['index'],
+        "height": block['height'],
         'transactions': block['transactions'],
         'proof': block['proof'],
         'previous_hash': block['previous_hash']
@@ -214,7 +214,7 @@ def mine():
     return jsonify(response), 200
 
 
-@app.route('/transaction/new', method=['POST'])
+@app.route('/transaction/new', methods=['POST'])
 def new_transaction():
     values = request.get_json()
 
@@ -224,8 +224,17 @@ def new_transaction():
         return "Missing values", 400
 
     # Create a new transaction
-    index = blockChain.new_transaction(values['sender'], values['recipient'], values['amount'])
-    response = {'message': f'Transaction will be added of Block {index}'}
+    height = blockChain.new_transaction(values['sender'], values['recipient'], values['amount'])
+    response = {'message': f'Transaction will be added of Block {height}'}
+    return jsonify(response), 200
+
+
+@app.route('/chain', methods=['GET'])
+def full_chain():
+    response = {
+        'chain':blockChain.chain,
+        'length': len(blockChain.chain)
+    }
     return jsonify(response), 200
 
 
